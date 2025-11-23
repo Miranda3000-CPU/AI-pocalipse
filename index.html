@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apocalipse: Estudo Interativo</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#92400e">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fffbeb; /* amber-50 */
+        }
+        
+        /* Scroll Personalizado */
+        #chapter-menu::-webkit-scrollbar,
+        main::-webkit-scrollbar,
+        #explanation-output::-webkit-scrollbar,
+        #verses-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chapter-menu::-webkit-scrollbar-track,
+        main::-webkit-scrollbar-track,
+        #explanation-output::-webkit-scrollbar-track,
+        #verses-container::-webkit-scrollbar-track {
+            background: #fefce8; /* yellow-50 */
+        }
+        #chapter-menu::-webkit-scrollbar-thumb,
+        main::-webkit-scrollbar-thumb,
+        #explanation-output::-webkit-scrollbar-thumb,
+        #verses-container::-webkit-scrollbar-thumb {
+            background: #d97706; /* amber-500 */
+            border-radius: 10px;
+        }
+        #chapter-menu::-webkit-scrollbar-thumb:hover,
+        main::-webkit-scrollbar-thumb:hover,
+        #explanation-output::-webkit-scrollbar-thumb:hover,
+        #verses-container::-webkit-scrollbar-thumb:hover {
+            background: #b45309; /* amber-600 */
+        }
+
+        /* Container dos versículos com altura máxima e scroll */
+        #verses-container {
+            max-height: 60vh; /* Ajuste a altura conforme necessário */
+            overflow-y: auto;
+            padding-right: 0.5rem; /* Espaço para a barra de rolagem */
+        }
+
+        .prose h3 {
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #92400e; /* amber-900 */
+        }
+        .prose p {
+            line-height: 1.7;
+        }
+    </style>
+</head>
+<body class="text-amber-900 flex flex-col h-screen overflow-hidden">
+
+    <header class="fixed top-0 left-0 right-0 bg-amber-800 text-white shadow-lg z-40 h-16 flex items-center justify-between px-4">
+        <div class="flex items-center">
+            <button id="menu-toggle" class="md:hidden mr-4 text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+            <h1 class="text-xl font-bold">Apocalipse: Estudo Interativo</h1>
+        </div>
+        <div>
+            <button id="about-btn" class="bg-amber-600 hover:bg-amber-700 transition-colors px-3 py-1.5 rounded-md text-sm">Sobre</button>
+            <button id="install-btn" class="hidden bg-emerald-500 hover:bg-emerald-600 transition-colors px-3 py-1.5 rounded-md text-sm ml-2">Instalar App</button>
+        </div>
+    </header>
+
+    <div class="flex flex-1 pt-16">
+        <aside id="chapter-menu" class="fixed top-0 left-0 h-full w-64 bg-amber-100 border-r border-amber-200 p-4 overflow-y-auto z-50 transform -translate-x-full md:relative md:translate-x-0 md:pt-16 transition-transform duration-300 ease-in-out">
+            <div class="flex justify-between items-center md:hidden mb-4">
+                 <h2 class="text-2xl font-bold text-amber-900">Capítulos</h2>
+                 <button id="close-menu" class="text-amber-600 text-2xl font-bold">&times;</button>
+            </div>
+            <nav id="chapter-list" class="space-y-2 mt-16 md:mt-0"></nav>
+        </aside>
+
+        <main class="flex-1 p-4 md:p-8 overflow-y-auto">
+            <div id="chapter-content" class="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-md border border-amber-200">
+                <h2 id="chapter-title" class="text-3xl font-bold text-amber-900 mb-6 border-b border-amber-200 pb-4"></h2>
+                <div id="verses-container" class="space-y-4 text-lg leading-relaxed"></div>
+                 <div class="mt-8 flex justify-between">
+                    <button id="prev-chapter" class="bg-amber-700 text-white px-4 py-2 rounded-lg hover:bg-amber-800 transition-colors disabled:bg-amber-300">Anterior</button>
+                    <button id="next-chapter" class="bg-amber-900 text-white px-4 py-2 rounded-lg hover:bg-amber-950 transition-colors disabled:bg-amber-300">Próximo</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+   <div id="about-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-lg">
+        <h3 class="text-2xl font-bold text-amber-900 mb-4">Sobre o Projeto</h3>
+        <p class="mb-4 text-amber-800">Esta é uma aplicação de estudo interativo do livro de Apocalipse. Ela permite a leitura capítulo por capítulo, salva seu progresso e oferece explicações teológicas com a ajuda da IA-pocalipse.</p>
+        <p class="text-amber-800">O projeto pode ser instalado em seu dispositivo se suportado. Para resetar o progresso, limpe os dados do site. </p>
+        <p>IA gera duas vertentes, pois o livro é simbólico e varia interpretações que são plausíveis.</p>
+        <div class="text-right mt-6">
+            <button id="close-about-modal" class="bg-amber-800 text-white px-4 py-2 rounded-lg hover:bg-amber-900">Fechar</button>
+        </div>
+    </div>
+</div>
+    
+    <div id="explanation-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-title" class="text-xl font-bold text-amber-900">Explicação Teológica</h3>
+                <button id="close-modal" class="text-amber-500 hover:text-amber-800 text-3xl">&times;</button>
+            </div>
+            <p id="modal-verse" class="mb-4 p-3 bg-amber-100 rounded-md text-amber-800 border border-amber-200"></p>
+            <div id="explanation-output" class="flex-1 overflow-y-auto p-4 border rounded-md bg-amber-50 min-h-[200px]">
+                <div id="loader" class="flex flex-col items-center justify-center h-full">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-900"></div>
+                    <p class="mt-4 text-amber-700">Cerca de 30 segundos...</p>
+                </div>
+                <div id="explanation-content" class="text-amber-800 prose max-w-none hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        const GEMINI_MODEL = "gemini-2.5-flash-preview-05-20";
+        const DB_NAME = 'bibleReaderDB';
+        const STORE_NAME = 'progress';
+        const BOOK_DATA_URL = './output_ap.json';
+
+        let db;
+        let bookData = null;
+        let currentChapter = 1;
+        let readChapters = new Set();
+        let deferredInstallPrompt = null;
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => console.log('Service Worker registrado com sucesso:', registration))
+                    .catch(err => console.log('Falha ao registrar Service Worker:', err));
+            });
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            document.getElementById('install-btn').classList.remove('hidden');
+        });
+
+        async function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onerror = e => reject("Erro no IndexedDB: " + e.target.errorCode);
+                request.onupgradeneeded = e => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+                request.onsuccess = e => {
+                    db = e.target.result;
+                    resolve(db);
+                };
+            });
+        }
+
+        async function saveData(id, data) {
+            if (!db) return;
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.put({ id, ...data });
+                request.onsuccess = () => resolve();
+                request.onerror = e => reject('Erro ao salvar dados: ' + e.target.errorCode);
+            });
+        }
+
+        async function loadData(id) {
+            if (!db) return null;
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.get(id);
+                request.onsuccess = e => resolve(e.target.result);
+                request.onerror = e => reject('Erro ao carregar dados: ' + e.target.errorCode);
+            });
+        }
+        
+        async function fetchBookData() {
+            try {
+                const response = await fetch(BOOK_DATA_URL);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error("Não foi possível carregar o arquivo do livro:", error);
+                document.getElementById('chapter-content').innerHTML = `<p class="text-red-600 font-bold">Erro ao carregar o livro. Por favor, verifique se o arquivo 'output_ap.json' está no mesmo diretório.</p>`;
+                return null;
+            }
+        }
+
+        function renderChapterList() {
+            const list = document.getElementById('chapter-list');
+            list.innerHTML = '';
+            for (let i = 1; i <= bookData.chapters.length; i++) {
+                const link = document.createElement('a');
+                link.href = '#';
+                link.textContent = `Capítulo ${i}`;
+                link.dataset.chapter = i;
+                link.className = `block px-3 py-2 rounded-md text-amber-800 hover:bg-amber-200 transition-colors`;
+                if (i === currentChapter) {
+                    link.classList.add('bg-amber-800', 'text-white', 'font-semibold');
+                    link.classList.remove('hover:bg-amber-200', 'text-amber-800');
+                }
+                if (readChapters.has(i)) {
+                    link.innerHTML += ' <span class="text-xs text-green-500">✓</span>';
+                }
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    navigateToChapter(i);
+                    document.getElementById('chapter-menu').classList.add('-translate-x-full');
+                });
+                list.appendChild(link);
+            }
+        }
+
+        function renderChapter(chapterNumber) {
+            const chapter = bookData.chapters[chapterNumber - 1];
+            const titleEl = document.getElementById('chapter-title');
+            const versesContainer = document.getElementById('verses-container');
+            titleEl.textContent = `${bookData.name} - Capítulo ${chapterNumber}`;
+            versesContainer.innerHTML = '';
+            chapter.forEach((verse, index) => {
+                const verseNumber = index + 1;
+                const p = document.createElement('p');
+                p.innerHTML = `<sup class="font-bold text-amber-500 mr-2">${verseNumber}</sup>${verse}
+                <button data-verse="${verseNumber}" data-text="${verse.replace(/"/g, '&quot;')}" class="explain-btn text-xs bg-amber-200 text-amber-800 px-2 py-1 rounded-full ml-2 hover:bg-amber-300 transition-all">Explicar</button>`;
+                versesContainer.appendChild(p);
+            });
+            document.querySelectorAll('.explain-btn').forEach(button => {
+                button.addEventListener('click', openExplanationModal);
+            });
+            document.getElementById('prev-chapter').disabled = chapterNumber === 1;
+            document.getElementById('next-chapter').disabled = chapterNumber === bookData.chapters.length;
+        }
+
+        async function navigateToChapter(chapterNumber) {
+            currentChapter = chapterNumber;
+            renderChapter(chapterNumber);
+            renderChapterList();
+            readChapters.add(chapterNumber);
+            await saveData('progress', { lastChapter: currentChapter, read: Array.from(readChapters) });
+            if (readChapters.size === bookData.chapters.length) {
+                confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 }, colors: ['#f59e0b', '#fbbf24', '#fcd34d', '#ffffff'] });
+            }
+        }
+
+        function setupEventListeners() {
+            document.getElementById('install-btn').addEventListener('click', async () => {
+                if (deferredInstallPrompt) {
+                    deferredInstallPrompt.prompt();
+                    await deferredInstallPrompt.userChoice;
+                    deferredInstallPrompt = null;
+                    document.getElementById('install-btn').classList.add('hidden');
+                }
+            });
+            document.getElementById('prev-chapter').addEventListener('click', () => {
+                if (currentChapter > 1) navigateToChapter(currentChapter - 1);
+            });
+            document.getElementById('next-chapter').addEventListener('click', () => {
+                if (currentChapter < bookData.chapters.length) navigateToChapter(currentChapter + 1);
+            });
+            document.getElementById('menu-toggle').addEventListener('click', () => {
+                document.getElementById('chapter-menu').classList.remove('-translate-x-full');
+            });
+            document.getElementById('close-menu').addEventListener('click', () => {
+                document.getElementById('chapter-menu').classList.add('-translate-x-full');
+            });
+            document.getElementById('about-btn').addEventListener('click', () => document.getElementById('about-modal').classList.remove('hidden'));
+            document.getElementById('close-about-modal').addEventListener('click', () => document.getElementById('about-modal').classList.add('hidden'));
+            document.getElementById('close-modal').addEventListener('click', () => document.getElementById('explanation-modal').classList.add('hidden'));
+        }
+
+        function openExplanationModal(event) {
+            const button = event.currentTarget;
+            const verseNumber = button.dataset.verse;
+            const verseText = button.dataset.text;
+            const modal = document.getElementById('explanation-modal');
+            
+            document.getElementById('modal-title').textContent = `Explicação de Apocalipse ${currentChapter}:${verseNumber}`;
+            document.getElementById('modal-verse').textContent = verseText;
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            getGeminiExplanation(verseNumber, verseText);
+        }
+        
+        async function getGeminiExplanation(verseNumber, verseText) {
+            const loader = document.getElementById('loader');
+            const explanationContent = document.getElementById('explanation-content');
+            
+            loader.style.display = 'flex';
+            explanationContent.style.display = 'none';
+            explanationContent.innerHTML = '';
+            
+            const prompt = `Aja como um teólogo especialista em escatologia. Forneça uma análise rápida e comparativa do versículo 'Apocalipse ${currentChapter}:${verseNumber} - "${verseText}"'. Sua explicação deve ser dividida em duas seções claras e bem definidas, com o corpo do texto justificado. Apresente as perspectivas de duas denominações, sem mencioná-las diretamente. Para cada perspectiva, explique os principais pontos de interpretação, simbologia e como o versículo se encaixa na doutrina geral da respectiva denominação. Ao concluir a primeira perspectiva, utilize a frase 'há outro entendimento que' para introduzir a segunda. Seja profundo, claro e didático, mas mantenha a resposta concisa. Destaque em **negrito** os pontos mais relevantes usando markdown e utilize '#' para separar as seções de cada explicação.`;
+
+            try {
+                const response = await fetch('/api/gemini', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt, model: GEMINI_MODEL })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.text();
+                    throw new Error(`API Error: ${response.status} - ${errorData}`);
+                }
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    explanationContent.innerHTML = marked.parse(text);
+                } else {
+                    explanationContent.textContent = 'Não foi possível obter uma explicação. A resposta da API estava vazia.';
+                }
+
+            } catch (error) {
+                console.error('Erro ao buscar explicação:', error);
+                explanationContent.textContent = 'Ocorreu um erro ao buscar a explicação. Verifique o console do servidor Deno para mais detalhes.';
+            } finally {
+                loader.style.display = 'none';
+                explanationContent.style.display = 'block';
+            }
+        }
+
+        async function main() {
+            try {
+                await initDB();
+                const progress = await loadData('progress');
+                if (progress) {
+                    currentChapter = progress.lastChapter || 1;
+                    readChapters = new Set(progress.read || []);
+                }
+                
+                bookData = await fetchBookData();
+                if (!bookData) return;
+
+                setupEventListeners();
+                navigateToChapter(currentChapter);
+            } catch (err) {
+                console.error("Falha na inicialização:", err);
+                document.getElementById('chapter-content').innerHTML = `<p class="text-red-600 font-bold">Ocorreu um erro crítico ao iniciar a aplicação. Verifique o console para mais detalhes.</p>`;
+            }
+        }
+
+        main();
+    </script>
+    <!-- Analytics -->
+    <script
+    src="https://app.rybbit.io/api/script.js"
+    data-site-id="1982"
+    defer
+></script>
+</body>
+</html>
+
